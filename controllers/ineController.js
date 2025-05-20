@@ -25,6 +25,19 @@ exports.getByIdOrCurp = (req, res) => {
   });
 };
 
+// Obtener todos los registros
+exports.getAll = (req, res) => {
+  const sql = `
+    SELECT * FROM personas p
+    LEFT JOIN direcciones d ON p.curp = d.curp
+    LEFT JOIN datos_ine i ON p.curp = i.curp
+  `;
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results);
+  });
+};
+
 // Insertar en las 3 tablas
 exports.insertAll = (req, res) => {
   const { persona, direccion, datosIne } = req.body;
@@ -76,6 +89,33 @@ exports.deleteByCurp = (req, res) => {
           db.commit((err) => {
             if (err) return db.rollback(() => res.status(500).json({ error: err }));
             res.json({ message: 'Datos eliminados correctamente' });
+          });
+        });
+      });
+    });
+  });
+};
+
+// Actualizar por CURP
+exports.updateByCurp = (req, res) => {
+  const { curp } = req.params;
+  const { persona, direccion, datosIne } = req.body;
+
+  db.beginTransaction((err) => {
+    if (err) return res.status(500).json({ error: err });
+
+    db.query('UPDATE personas SET ? WHERE curp = ?', [persona, curp], (err) => {
+      if (err) return db.rollback(() => res.status(500).json({ error: err }));
+
+      db.query('UPDATE direcciones SET ? WHERE curp = ?', [direccion, curp], (err) => {
+        if (err) return db.rollback(() => res.status(500).json({ error: err }));
+
+        db.query('UPDATE datos_ine SET ? WHERE curp = ?', [datosIne, curp], (err) => {
+          if (err) return db.rollback(() => res.status(500).json({ error: err }));
+
+          db.commit((err) => {
+            if (err) return db.rollback(() => res.status(500).json({ error: err }));
+            res.json({ message: 'Datos actualizados correctamente' });
           });
         });
       });
